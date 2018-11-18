@@ -13,7 +13,7 @@ NOCOLOR='\033[0m'
 BOLD='\033[1m'
 
 WORKDIR=~/root/benchmark/sergio
-
+HOMEDIR=$(pwd)
 
 function install_dependencies(){
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Installing dependencies.\n\n"
@@ -78,10 +78,14 @@ function hyperscan_install(){
 function setup_snort(){
 	sudo mkdir -p /usr/local/lib/snort_dynamicpreprocessor/
 	sudo mkdir -p /usr/local/lib/snort_dynamicengine
-	sudo mkdir -p /usr/local/lib/snort_dynamicrulesp
+	sudo mkdir -p /usr/local/lib/snort_dynamicrules
+	sudo mkdir -p /var/log/snort
+
 	cd $WORKDIR/snort_src/snort-2.9.8.2
 	find -name '*.so' -exec sudo cp {\} /usr/local/lib/snort_dynamicengine/ \; 	
-	tar xf config.tar.gz && mv etc/ $WORKDIR/snort_src/snort-2.9.8.2
+	cd $HOMEDIR
+	tar xf config.tar.gz && mv etc/* $WORKDIR/snort_src/snort-2.9.8.2/etc
+	cd -
 
 }
 
