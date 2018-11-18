@@ -70,8 +70,8 @@ function hyperscan_install(){
 	
 	tar xf v5.0.0.tar.gz && rm v5.0.0.tar.gz && cd hyperscan-5.0.0
 	mkdir -p objdir && cd objdir
-	cmake .. -DBUILD_STATIC_AND_SHARED=ON -DBUILD_AVX512=ON
-	make 
+	cmake .. -DBUILD_STATIC_AND_SHARED=ON #-DBUILD_AVX512=ON
+	make && sudo make install 
 	echo -ne "\n\t${GREEN}[+] INFO:${NOCOLOR} ${BOLD}HYPERSCAN${NOCOLOR} installed successfully.\n\n"
 }
 
