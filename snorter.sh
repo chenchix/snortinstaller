@@ -38,14 +38,11 @@ function snort_install() {
 	./configure --enable-sourcefire --enable-intel-hyperscan \
             --with-intel-hyperscan-includes=$WORKDIR/hyperscan_src/hyperscan-5.0.0/src \
             --with-intel-hyperscan-libraries=$WORKDIR/hyperscan_src/hyperscan-5.0.0/objdir/lib \
-	&& make
+	&& make && make install
 	echo -ne "\n\t${GREEN}[+] INFO:${NOCOLOR} ${BOLD}$SNORT${NOCOLOR} installed successfully.\n\n"
 	cd ..
 
-	return
-
 	sudo ldconfig
-	sudo ln -s /usr/local/bin/snort /usr/sbin/snort
 
 }
 
