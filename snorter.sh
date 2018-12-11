@@ -12,7 +12,8 @@ VIOLET='\033[0;35m'
 NOCOLOR='\033[0m'
 BOLD='\033[1m'
 
-WORKDIR=$(pwd)/release
+WORKDIR=$(pwd)/workdir 
+RELEASE=$(pwd)/release
 HOMEDIR=$(pwd)
 
 function install_dependencies(){
@@ -20,6 +21,30 @@ function install_dependencies(){
 	sudo apt install -y --force-yes luajit libluajit-5.1-dev pkg-config build-essential cmake ragel sqlite3 libsqlite3-dev libboost-dev libpcap-dev libpcre3-dev libdumbnet-dev bison flex zlib1g-dev git locate vim libdaq-dev autoconf libtool-bin
 
 }
+
+function hyperscan_install(){
+	#Downloading Hyperscan
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}HYPERSCAN${NOCOLOR}.\n\n"
+	arch=$(uname -m)
+	if [ "$arch" == "aarch64" ]; then
+		if [ ! -e $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2 ]; then
+			echo -ne "\n\t${CYAN}[i]: ERROR: Hyperscan version for ${BOLD}ARM not found. Ask smunoz@marvell.com${NOCOLOR}\n\n"
+			RETURN=-1
+			return
+		fi
+		tar xf $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2
+	else
+		cd $WORKDIR && mkdir -p hyperscan_src && cd hyperscan_src
+		wget --no-check-certificate -P $WORKDIR/hyperscan_src https://github.com/intel/hyperscan/archive/v5.0.0.tar.gz
+		tar xf v5.0.0.tar.gz && rm v5.0.0.tar.gz && cd hyperscan-5.0.0
+		mkdir -p objdir && cd objdir
+		cmake .. -DBUILD_STATIC_AND_SHARED=ON #-DBUILD_AVX512=ON
+		make && make install 
+	fi
+	echo -ne "\n\t${GREEN}[+] INFO:${NOCOLOR} ${BOLD}HYPERSCAN${NOCOLOR} installed successfully.\n\n"
+	RETURN=0
+}
+
 
 function snort_install() {
 	#Downloading SNORT
@@ -36,7 +61,7 @@ function snort_install() {
 	#Patching snort to use hyperscan
 	cd snort-2.9.8.2
 
-	#patch_snort
+	patch_snort
 	
 	arch=$(uname -m)
 
@@ -44,15 +69,16 @@ function snort_install() {
 
 	if [ "$arch" == "aarch64" ]; then
 	        ./configure --enable-sourcefire --enable-intel-hyperscan \
-        	    --with-intel-hyperscan-includes=$WORKDIR/hyperscan_src/release/src \
-				--with-intel-hyperscan-libraries=/root/nfs/ncg-se.hyperscan/objdir/lib/ \
-	            --prefix=${WORKDIR} \
-	        && make -j8 && make install
+        	    --with-intel-hyperscan-includes=$WORKDIR/../prerelease/src \
+	            --with-intel-hyperscan-libraries=$WORKDIR/../prerelease/lib \
+		    	--prefix=${RELEASE} \
+	        && make -j18 && make install
 	else
-		/configure --enable-sourcefire --enable-intel-hyperscan \
+		./configure --enable-sourcefire --enable-intel-hyperscan \
 	           --with-intel-hyperscan-includes=$WORKDIR/hyperscan_src/hyperscan-5.0.0/src \
 	           --with-intel-hyperscan-libraries=$WORKDIR/hyperscan_src/hyperscan-5.0.0/objdir/lib \
-		& make && make installed
+	           --prefix=${RELEASE} \
+		&& make && make install
 	fi
 	echo -ne "\n\t${GREEN}[+] INFO:${NOCOLOR} ${BOLD}$SNORT${NOCOLOR} installed successfully.\n\n"
 	cd ..
@@ -64,58 +90,38 @@ function snort_install() {
 function patch_snort(){
 	
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}SNORT PATCH TO USE HYPERSCAN${NOCOLOR}.\n\n"
-	wget --no-check-certificate -P $WORKDIR/snort_src https://01.org/sites/default/files/downloads//snort-2982-hyperscan-v1.tar.gz
+	#wget --no-check-certificate -P $WORKDIR/snort_src https://01.org/sites/default/files/downloads//snort-2982-hyperscan-v1.tar.gz
 	cd $WORKDIR/snort_src/snort-2.9.8.2
-	tar xf $WORKDIR/snort_src/snort-2982-hyperscan-v1.tar.gz && rm $WORKDIR/snort_src/snort-2982-hyperscan-v1.tar.gz
-    	zcat snort-2982-hyperscan-v1/snort-2982-hyperscan-v1.patch.gz | patch -p2
+	#tar xf $WORKDIR/snort_src/snort-2982-hyperscan-v1.tar.gz && rm $WORKDIR/snort_src/snort-2982-hyperscan-v1.tar.gz
+   # 	zcat snort-2982-hyperscan-v1/snort-2982-hyperscan-v1.patch.gz | patch -p2
+   	patch -p2 < ${WORKDIR}/../patches/snort-2982-hyperscan-v1.patch 
 	autoreconf -fi
 }
 
 
 
-function hyperscan_install(){
-	#Downloading Hyperscan
-	cd $WORKDIR && mkdir -p hyperscan_src && cd hyperscan_src
-
-	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}HYPERSCAN${NOCOLOR}.\n\n"
-	arch=$(uname -m)
-	if [ "$arch" == "aarch64" ]; then
-		if [ ! -e $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2 ]; then
-			echo -ne "\n\t${CYAN}[i]: ERROR: Hyperscan version for ${BOLD}ARM not found. Ask smunoz@marvell.com${NOCOLOR}\n\n"
-			RETURN=-1
-			return
-		fi
-		tar xf $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2
-	else
-		wget --no-check-certificate -P $WORKDIR/hyperscan_src https://github.com/intel/hyperscan/archive/v5.0.0.tar.gz
-		tar xf v5.0.0.tar.gz && rm v5.0.0.tar.gz && cd hyperscan-5.0.0
-		mkdir -p objdir && cd objdir
-		cmake .. -DBUILD_STATIC_AND_SHARED=ON #-DBUILD_AVX512=ON
-		make && sudo make install 
-	fi
-	echo -ne "\n\t${GREEN}[+] INFO:${NOCOLOR} ${BOLD}HYPERSCAN${NOCOLOR} installed successfully.\n\n"
-	RETURN=0
-}
 
 function setup_snort(){
-	sudo mkdir -p ${WORKDIR}/lib/snort_dynamicpreprocessor/
-	sudo mkdir -p ${WORKDIR}/lib/snort_dynamicengine
-	sudo mkdir -p ${WORKDIR}/lib/snort_dynamicrules
-	sudo mkdir -p ${WORKDIR}/var/log/snort
-	sudo mkdir -p ${WORKDIR}/etc
+	mkdir -p ${RELEASE}/lib/snort_dynamicpreprocessor/
+	mkdir -p ${RELEASE}/lib/snort_dynamicengine
+	mkdir -p ${RELEASE}/lib/snort_dynamicrules
+	mkdir -p ${RELEASE}/var/log/snort
+	mkdir -p ${RELEASE}/etc
 
 	cd $WORKDIR/snort_src/snort-2.9.8.2
-	find -name '*.so' -exec sudo cp {\} ${WORKDIR}/lib/snort_dynamicengine/ \; 	
+	find -name '*.so' -exec cp {\} ${RELEASE}/lib/snort_dynamicengine/ \; 	
 	cd $HOMEDIR
-	tar xf config.tar.gz && mv etc/ ${WORKDIR}/
-	sed -e "s~CHANGEME~$WORKDIR~" -i ${WORKDIR}/etc/snort.conf
+	tar xf config.tar.gz && rsync -av etc ${RELEASE}
+	rm -rf etc
+	sed -e "s~CHANGEME~$RELEASE~" -i ${RELEASE}/etc/snort.conf
 	cd -
 
 }
 
 
-
+rm -rf $WORKDIR $RELEASE
 mkdir -p $WORKDIR
+mkdir -p $RELEASE
 install_dependencies
 hyperscan_install
 if [ $RETURN == -1 ]; then
@@ -127,3 +133,6 @@ else
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Run snort using this line ${NOCOLOR}.\n\n"
 	echo -ne "\n\t${BOLD} sudo LD_LIBRARY_PATH=$WORKDIR/lib $WORKDIR/bin/snort -c $WORKDIR/etc/snort.conf ${NOCOLOR}\n"
 fi
+
+rm -rf $WORKDIR/../prerelease
+rm -rf $WORKDIR
