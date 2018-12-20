@@ -1463,7 +1463,7 @@ diff --git a/snort/src/snort.h b/snort/src/snort.h
 index 22b6a64..4931c01 100644
 --- a/snort/src/snort.h
 +++ b/snort/src/snort.h
-@@ -680,9 +680,17 @@ struct _MandatoryEarlySessionCreator;
+@@ -680,6 +680,11 @@ struct _MandatoryEarlySessionCreator;
  struct _ReloadAdjustEntry;
  #endif
  struct _fileConfig;
@@ -1475,13 +1475,7 @@ index 22b6a64..4931c01 100644
  typedef struct _SnortConfig
  {
      RunMode run_mode;
-+#ifdef INTEL_HYPERSCAN
-+    struct _HyperscanContext *hyperscan_ctx;
-+#endif
-     int run_mode_flags;
-     int run_flags;
-     int output_flags;
-@@ -962,6 +970,9 @@ typedef struct _SnortConfig
+@@ -962,6 +967,9 @@ typedef struct _SnortConfig
  #ifdef INTEL_SOFT_CPM
      struct _IntelPmHandles *ipm_handles;
  #endif
@@ -1491,3 +1485,4 @@ index 22b6a64..4931c01 100644
  
  /* Used when a user defines a new rule type (ruletype keyword)
   * It points to the new rule type's ListHead and is used for accessing the
+
