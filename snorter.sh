@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 # Title: Snorter.sh
 # Description: Install automatically Snort + patch + Hyperscan
 
@@ -32,7 +32,7 @@ function hyperscan_install(){
 			RETURN=-1
 			return
 		fi
-		tar xf $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2
+		tar xf $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2 -C ${WORKDIR}/
 	else
 		cd $WORKDIR && mkdir -p hyperscan_src && cd hyperscan_src
 		wget --no-check-certificate -P $WORKDIR/hyperscan_src https://github.com/intel/hyperscan/archive/v5.0.0.tar.gz
@@ -66,8 +66,8 @@ function snort_install() {
 	arch=$(uname -m)
 	if [ "$arch" == "aarch64" ]; then
 	        ./configure --enable-intel-hyperscan \
-       		    --with-intel-hyperscan-includes=$WORKDIR/../prerelease/src \
-	            --with-intel-hyperscan-libraries=$WORKDIR/../prerelease/lib \
+       		    --with-intel-hyperscan-includes=$WORKDIR/release/src \
+	            --with-intel-hyperscan-libraries=$WORKDIR/release/lib \
 		    	--prefix=${RELEASE} \
 			--enable-gre --enable-mpls --enable-targetbased --enable-ppm --enable-perfprofiling --enable-zlib --enable-active-response --enable-normalizer --enable-reload --enable-react --enable-flexresp3 \
 	        && make -j8 && make install
@@ -87,7 +87,7 @@ function snort_install() {
 
 function patch_snort(){
 	
-	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}SNORT PATCH TO USE HYPERSCAN${NOCOLOR}.\n\n"
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}SNORT PATCH TO USE HYPERSCAN${NOCOLOR}\n\n"
 	cd $WORKDIR/snort_src/snort-2.9.11.1
    	patch -p2 < ${WORKDIR}/../patches/snort-2982-hyperscan-v1.patch 
 	autoreconf -fi
@@ -113,41 +113,106 @@ function setup_snort(){
 
 }
 
+
 function setup_hyperscan(){
 	
-	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Preparing hyperscan release ${NOCOLOR}.\n\n"
-	cp -rf $WORKDIR/../prerelease/bin/hsbench $RELEASE/bin/
-	cp -rf $WORKDIR/../prerelease/bin/pcapscan $RELEASE/bin/
-	cp -rf $WORKDIR/../prerelease/docs	$RELEASE/
-	cp -rf $WORKDIR/../prerelease/tools	$RELEASE/
-	cp -rf $WORKDIR/../prerelease/README.md	$RELEASE/
-	cp -rf $WORKDIR/../prerelease/*tar.bz2	$RELEASE/
-
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Preparing hyperscan release ${NOCOLOR}\n\n"
+	cp -rf ${WORKDIR}/release/bin/hsbench $RELEASE/bin/
+	cp -rf ${WORKDIR}/release/bin/pcapscan $RELEASE/bin/
+	cp -rf ${WORKDIR}/release/pcre $RELEASE/
+	cp -rf ${WORKDIR}/release/corpora $RELEASE/
+	cp -rf ${WORKDIR}/release/pcap $RELEASE/
+	cp -rf ${WORKDIR}/release/doc	$RELEASE/
+	cp -rf ${WORKDIR}/release/tools	$RELEASE/
+	cp -rf ${WORKDIR}/release/README.md	$RELEASE/
+	cp -rf ${WORKDIR}/release/LICENSE	$RELEASE/
+	cp -rf ${WORKDIR}/release/run_bench.sh	$RELEASE/
 }
+
+function install_libraries(){
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Copying hyperscan libraries.${NOCOLOR}\n\n"
+	mkdir -p ${RELEASE}/libs 
+	cp -rf ${WORKDIR}/release/lib/*so* $RELEASE/libs
+}
+
+
 
 function packaging(){
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Packaging release ${NOCOLOR}\n\n"
 	cd $HOMEDIR
-	tar cjf snort_hyperscan_marvell.tar.bz2 $RELEASE
-	
+	tar cjf snort_hyperscan_marvell.tar.bz2 release
 }
 
-rm -rf $WORKDIR $RELEASE
-mkdir -p $WORKDIR
-mkdir -p ${RELEASE}/bin
+function usage(){
+	echo -ne "Usage:\n"
+	echo -ne "\t-s on\t\tInstall snort with hyperscan support\n"		
+	echo -ne "\t-s off\t\tDo not install snort with hyperscan support\n"		
+	echo -ne "\t-l on\t\tInstall hyperscan libraries\n"
+	echo -ne "\t-l off\t\tDo not install hyperscan libraries\n"
+	echo -ne "\t-a\t\tInstall hyperscan libraries and snort\n"
+	echo -ne "IE: `basename $0` -\n"
+	exit 1
 
+}
+
+while getopts ":s:l:ah:" opt; do
+  case $opt in
+    s)
+      	if [ $OPTARG == "on" ]; 
+      	then
+	      	echo -ne "\n\t${CYAN}[i]Package with SNORT ${NOCOLOR}.\n\n" >&2
+    	   	INSTALL_SNORT=1
+    	else
+			echo -ne "\n\t${CYAN}[i]Package without SNORT ${NOCOLOR}.\n\n" >&2
+		fi
+      	;;
+    l)
+      	if [ $OPTARG == "on" ]; 
+      	then
+	      	echo -ne "\n\t${CYAN}[i]Package with libraries ${NOCOLOR}.\n\n" >&2
+      		INSTALL_LIBRARIES=1
+      	else
+			echo -ne "\n\t${CYAN}[i]Package without libraries ${NOCOLOR}.\n\n" >&2
+		fi
+      	;;
+    a)
+     	echo -ne "\n\t${CYAN}[i]Package with libraries and snort${NOCOLOR}.\n\n" >&2
+    	INSTALL_SNORT=1
+      	INSTALL_LIBRARIES=1
+      	;;
+    h)
+		usage
+		;;
+    *)
+      	echo -ne "\n\t${CYAN}[i]Invalid option: -$OPTARG ${NOCOLOR}.\n\n" >&2
+	usage
+      	;;
+
+  esac
+done
+
+if [[ $# -eq 0 ]] ; then
+    usage
+fi
+read -p "Press any key to continue"
+
+rm -rf $WORKDIR $RELEASE
+mkdir -p ${WORKDIR}/release
+mkdir -p ${RELEASE}/bin
 install_dependencies
 hyperscan_install
-if [ $RETURN == -1 ]; then
-	cd $HOMEDIR
-	return 0
-else
+setup_hyperscan
+
+if [ "$INSTALL_SNORT" == "1" ];
+then
 	snort_install
 	setup_snort
-	setup_hyperscan
-	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Run snort using this line ${NOCOLOR}.\n\n"
-	echo -ne "\n\t${BOLD} sudo LD_LIBRARY_PATH=$RELEASE/lib $RELEASE/bin/snort -c $RELEASE/etc/snort.conf ${NOCOLOR}\n"
+fi
+
+if [ "$INSTALL_LIBRARIES" == "1" ];
+then
+	install_libraries
 fi
 
 packaging
-rm -rf $WORKDIR/../prerelease
-rm -rf $WORKDIR
+#rm -rf $WORKDIR
