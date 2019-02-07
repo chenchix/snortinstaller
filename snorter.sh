@@ -27,12 +27,13 @@ function hyperscan_install(){
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Downloading ${BOLD}HYPERSCAN${NOCOLOR}.\n\n"
 	arch=$(uname -m)
 	if [ "$arch" == "aarch64" ]; then
-		if [ ! -e $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2 ]; then
+		if [ ! -e $HOMEDIR/$1 ]; then
 			echo -ne "\n\t${CYAN}[i]: ERROR: Hyperscan version for ${BOLD}ARM not found. Ask smunoz@marvell.com${NOCOLOR}\n\n"
 			RETURN=-1
 			return
+		else
+			tar xf $1 -C ${WORKDIR}/
 		fi
-		tar xf $HOMEDIR/hyperscan-4.7.0-marvell.tar.bz2 -C ${WORKDIR}/
 	else
 		cd $WORKDIR && mkdir -p hyperscan_src && cd hyperscan_src
 		wget --no-check-certificate -P $WORKDIR/hyperscan_src https://github.com/intel/hyperscan/archive/v5.0.0.tar.gz
@@ -131,10 +132,22 @@ function setup_hyperscan(){
 
 function install_libraries(){
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Copying hyperscan libraries.${NOCOLOR}\n\n"
-	mkdir -p ${RELEASE}/libs 
-	cp -rf ${WORKDIR}/release/lib/*so* $RELEASE/libs
+	mkdir -p ${RELEASE}/lib 
+	cd ${WORKDIR}/release/lib
+	for i in $(find -type f)
+	do
+		strip $i -o ${RELEASE}/lib/$i
+	done
+	cd
 }
 
+function install_headers(){
+	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Packaging release ${NOCOLOR}\n\n"
+	mkdir -p ${RELEASE}/src
+	cd ${WORKDIR}/release/src
+	cp -t ${RELEASE}/src hs.h hs_common.h hs_compile.h hs_runtime.h
+
+}
 
 
 function packaging(){
@@ -150,7 +163,8 @@ function usage(){
 	echo -ne "\t-l on\t\tInstall hyperscan libraries\n"
 	echo -ne "\t-l off\t\tDo not install hyperscan libraries\n"
 	echo -ne "\t-a\t\tInstall hyperscan libraries and snort\n"
-	echo -ne "IE: `basename $0` -\n"
+	echo -ne "\tHYPERSCAN_PACKAGE\n"
+	echo -ne "IE: `basename $0` -a hyperscan-5.1.0.tar.bz2\n"
 	exit 1
 
 }
@@ -169,7 +183,7 @@ while getopts ":s:l:ah:" opt; do
     l)
       	if [ $OPTARG == "on" ]; 
       	then
-	      	echo -ne "\n\t${CYAN}[i]Package with libraries ${NOCOLOR}.\n\n" >&2
+	      	echo -ne "\n\t${CYAN}[i]Package with libraries and headers ${NOCOLOR}.\n\n" >&2
       		INSTALL_LIBRARIES=1
       	else
 			echo -ne "\n\t${CYAN}[i]Package without libraries ${NOCOLOR}.\n\n" >&2
@@ -194,13 +208,21 @@ done
 if [[ $# -eq 0 ]] ; then
     usage
 fi
+
+shift $(($OPTIND-1))
+if  [ -z $1 ]; then
+	usage
+fi
+
 read -p "Press any key to continue"
+
 
 rm -rf $WORKDIR $RELEASE
 mkdir -p ${WORKDIR}/release
 mkdir -p ${RELEASE}/bin
+
 install_dependencies
-hyperscan_install
+hyperscan_install $1
 setup_hyperscan
 
 if [ "$INSTALL_SNORT" == "1" ];
@@ -212,6 +234,7 @@ fi
 if [ "$INSTALL_LIBRARIES" == "1" ];
 then
 	install_libraries
+	install_headers
 fi
 
 packaging
