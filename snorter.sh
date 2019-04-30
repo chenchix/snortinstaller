@@ -18,7 +18,7 @@ HOMEDIR=$(pwd)
 
 function install_dependencies(){
 	echo -ne "\n\t${CYAN}[i] INFO:${NOCOLOR} Installing dependencies.\n\n"
-	sudo apt install -y --force-yes luajit libluajit-5.1-dev pkg-config build-essential cmake ragel sqlite3 libsqlite3-dev libboost-dev libpcap-dev libpcre3-dev libdumbnet-dev bison flex zlib1g-dev git locate vim libdaq-dev autoconf libtool-bin
+	sudo apt install -y --force-yes rsync luajit libluajit-5.1-dev pkg-config build-essential cmake ragel sqlite3 libsqlite3-dev libboost-dev libpcap-dev libpcre3-dev libdumbnet-dev bison flex zlib1g-dev git locate vim libdaq-dev autoconf libtool-bin
 
 }
 
