@@ -5,6 +5,8 @@ Script to install automatically snort 2.9.11.1, patch it and use hyperscan 5.0 a
 USAGE
 =====
 
+$ git clone https://github.com/chenchix/snortinstaller.git
+
 $ chmod u+x snorter.sh
 
 $ ./snorter.sh
