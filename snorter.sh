@@ -157,13 +157,12 @@ function packaging(){
 }
 
 function usage(){
-	echo -ne "Usage:\n"
+	echo -ne "Usage: [parameters] HYPERSCAN_PACKAGE\n"
 	echo -ne "\t-s on\t\tInstall snort with hyperscan support\n"		
-	echo -ne "\t-s off\t\tDo not install snort with hyperscan support\n"		
+	echo -ne "\t-s off\t\tInstall snort without hyperscan support\n"		
 	echo -ne "\t-l on\t\tInstall hyperscan libraries\n"
 	echo -ne "\t-l off\t\tDo not install hyperscan libraries\n"
 	echo -ne "\t-a\t\tInstall hyperscan libraries and snort\n"
-	echo -ne "\tHYPERSCAN_PACKAGE\n"
 	echo -ne "IE: `basename $0` -a hyperscan-5.1.0.tar.bz2\n"
 	exit 1
 
